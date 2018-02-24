@@ -21,13 +21,17 @@
 #include "ble/services/HealthThermometerService.h"
 
 DigitalOut led1(P0_21, 1);
+DigitalOut btn_pwr(P0_22, 1);
+InterruptIn pulse(P0_23);
 
 const static char     DEVICE_NAME[]        = "GasMeter";
 long i = 0;
 char mfgData[30] = "{}";
 int mfgDataLen = sizeof(mfgData);
+int debouncing = 0;
 
 static EventQueue eventQueue(/* event count */ 16 * EVENTS_EVENT_SIZE);
+int stopEvent = 0;
 
 void onBleInitError(BLE &ble, ble_error_t error)
 {
@@ -58,9 +62,25 @@ void scheduleBleEventsProcessing(BLE::OnEventsToProcessCallbackContext* context)
     eventQueue.call(Callback<void()>(&ble, &BLE::processEvents));
 }
 
-void periodicCallback(void)
+void stopAdvertising(){
+  stopEvent = 0;
+  BLE &ble = BLE::Instance();
+
+  ble.gap().stopAdvertising();
+  ble.gap().clearAdvertisingPayload();
+  led1.write(0);
+}
+
+void pulseHandler(void)
 {
-//    led1 = !led1; /* Do blinky on LED1 while we're waiting for BLE events */
+    if (debouncing) {
+      return;
+    } else {
+      debouncing = 1;
+      wait(10 * 0.001);
+      debouncing = 0;
+    }
+
     BLE &ble = BLE::Instance();
 
     i++;
@@ -71,16 +91,21 @@ void periodicCallback(void)
 
     ble.gap().startAdvertising();
     led1.write(1);
-    wait(1);
-    ble.gap().stopAdvertising();
-    ble.gap().clearAdvertisingPayload();
-    led1.write(0);
 
+    if (stopEvent){
+        eventQueue.cancel(stopEvent);
+    }
+    stopEvent = eventQueue.call_in(1000, stopAdvertising);
 }
 
 int main()
 {
-    eventQueue.call_every(4000, periodicCallback);
+    //eventQueue.call_every(4000, periodicCallback);
+
+    pulse.mode(PullDown);
+    wait(.001);
+    pulse.fall(&pulseHandler);
+    pulse.rise(&pulseHandler); //it's easier to debunce than making RC filter
 
     BLE &ble = BLE::Instance();
     ble.onEventsToProcess(scheduleBleEventsProcessing);
