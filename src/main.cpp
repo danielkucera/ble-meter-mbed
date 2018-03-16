@@ -102,10 +102,12 @@ void pulseHandler(void)
 
     BLE &ble = BLE::Instance();
 
+    ble.gap().setTxPower(4);
+
     float batV = ((float)my_analogin_read_u16() * 3.6) / 1024.0;
 
     i++;
-    mfgDataLen = sprintf(mfgData, "{ d: %ld, v: %d }", i, (int)(batV*1000));
+    mfgDataLen = sprintf(mfgData, "{ \"d\": %ld, \"v\": %d }", i, (int)(batV*1000));
 
     ble.gap().accumulateAdvertisingPayload(GapAdvertisingData::MANUFACTURER_SPECIFIC_DATA, (uint8_t *)mfgData, mfgDataLen );
     ble.gap().accumulateAdvertisingPayload(GapAdvertisingData::COMPLETE_LOCAL_NAME, (uint8_t *)DEVICE_NAME, sizeof(DEVICE_NAME));
