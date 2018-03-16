@@ -33,6 +33,25 @@ int debouncing = 0;
 static EventQueue eventQueue(/* event count */ 16 * EVENTS_EVENT_SIZE);
 int stopEvent = 0;
 
+void my_analogin_init(void)
+{
+    NRF_ADC->ENABLE = ADC_ENABLE_ENABLE_Enabled;
+    NRF_ADC->CONFIG = (ADC_CONFIG_RES_10bit << ADC_CONFIG_RES_Pos) |
+                      (ADC_CONFIG_INPSEL_SupplyOneThirdPrescaling << ADC_CONFIG_INPSEL_Pos) |
+                      (ADC_CONFIG_REFSEL_VBG << ADC_CONFIG_REFSEL_Pos) |
+                      (ADC_CONFIG_PSEL_Disabled << ADC_CONFIG_PSEL_Pos) |
+                      (ADC_CONFIG_EXTREFSEL_None << ADC_CONFIG_EXTREFSEL_Pos);
+}
+
+uint16_t my_analogin_read_u16(void)
+{
+    NRF_ADC->CONFIG     &= ~ADC_CONFIG_PSEL_Msk;
+    NRF_ADC->CONFIG     |= ADC_CONFIG_PSEL_Disabled << ADC_CONFIG_PSEL_Pos;
+    NRF_ADC->TASKS_START = 1;
+    while (((NRF_ADC->BUSY & ADC_BUSY_BUSY_Msk) >> ADC_BUSY_BUSY_Pos) == ADC_BUSY_BUSY_Busy) {};
+    return (uint16_t)NRF_ADC->RESULT; // 10 bit
+}
+
 void onBleInitError(BLE &ble, ble_error_t error)
 {
    /* Initialization error handling should go here */
@@ -83,8 +102,10 @@ void pulseHandler(void)
 
     BLE &ble = BLE::Instance();
 
+    float batV = ((float)my_analogin_read_u16() * 3.6) / 1024.0;
+
     i++;
-    mfgDataLen = sprintf(mfgData, "{ data: %ld }", i);
+    mfgDataLen = sprintf(mfgData, "{ d: %ld, v: %d }", i, (int)(batV*1000));
 
     ble.gap().accumulateAdvertisingPayload(GapAdvertisingData::MANUFACTURER_SPECIFIC_DATA, (uint8_t *)mfgData, mfgDataLen );
     ble.gap().accumulateAdvertisingPayload(GapAdvertisingData::COMPLETE_LOCAL_NAME, (uint8_t *)DEVICE_NAME, sizeof(DEVICE_NAME));
@@ -106,6 +127,8 @@ int main()
     wait(.001);
     pulse.fall(&pulseHandler);
     pulse.rise(&pulseHandler); //it's easier to debunce than making RC filter
+
+    my_analogin_init();
 
     BLE &ble = BLE::Instance();
     ble.onEventsToProcess(scheduleBleEventsProcessing);
