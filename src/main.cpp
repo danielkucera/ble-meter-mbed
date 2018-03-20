@@ -18,13 +18,17 @@
 #include <rtos.h>
 #include "mbed.h"
 #include "ble/BLE.h"
-#include "ble/services/HealthThermometerService.h"
+//#include "ble/services/HealthThermometerService.h"
 
 DigitalOut led1(P0_21, 1);
 DigitalOut btn_pwr(P0_22, 1);
 InterruptIn pulse(P0_23);
 
-const static char     DEVICE_NAME[]        = "GasMeter";
+//#define DEBOUCE_MS 10
+#define DEBOUCE_MS 0
+//#define COUNT_FALLS 1
+
+const static char     DEVICE_NAME[]        = "SmartMeter";
 long i = 0;
 char mfgData[30] = "{}";
 int mfgDataLen = sizeof(mfgData);
@@ -96,7 +100,7 @@ void pulseHandler(void)
       return;
     } else {
       debouncing = 1;
-      wait(10 * 0.001);
+      wait(DEBOUCE_MS * 0.001);
       debouncing = 0;
     }
 
@@ -128,7 +132,9 @@ int main()
     pulse.mode(PullDown);
     wait(.001);
     pulse.fall(&pulseHandler);
+#ifdef COUNT_FALLS
     pulse.rise(&pulseHandler); //it's easier to debunce than making RC filter
+#endif
 
     my_analogin_init();
 
