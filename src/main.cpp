@@ -15,10 +15,8 @@
  */
 
 #include <mbed_events.h>
-#include <rtos.h>
 #include "mbed.h"
 #include "ble/BLE.h"
-//#include "ble/services/HealthThermometerService.h"
 
 DigitalOut led1(P0_21, 1);
 DigitalOut btn_pwr(P0_22, 1);
@@ -27,6 +25,7 @@ InterruptIn pulse(P0_23);
 //#define DEBOUCE_MS 10
 #define DEBOUCE_MS 0
 //#define COUNT_FALLS 1
+#define SEND_EACH_NTH 1
 
 const static char     DEVICE_NAME[]        = "SmartMeter";
 long i = 0;
@@ -104,13 +103,18 @@ void pulseHandler(void)
       debouncing = 0;
     }
 
+    // increase pulse counter
+    i++;
+
+    if (i % SEND_EACH_NTH != 0)
+      return;
+
     BLE &ble = BLE::Instance();
 
     ble.gap().setTxPower(4);
 
     float batV = ((float)my_analogin_read_u16() * 3.6) / 1024.0;
 
-    i++;
     mfgDataLen = sprintf(mfgData, "{ \"d\": %ld, \"v\": %d }", i, (int)(batV*1000));
 
     ble.gap().accumulateAdvertisingPayload(GapAdvertisingData::MANUFACTURER_SPECIFIC_DATA, (uint8_t *)mfgData, mfgDataLen );
