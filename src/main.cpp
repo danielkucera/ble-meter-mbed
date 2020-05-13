@@ -118,11 +118,11 @@ void pulseHandler(void)
 
     mfgDataLen = sprintf(mfgData, "{\"d\":%ld,\"v\":%d}", i, (int)(batV*1000));
 
-    if (ble.gap().accumulateAdvertisingPayload(GapAdvertisingData::COMPLETE_LOCAL_NAME, (uint8_t *)DEVICE_NAME, sizeof(DEVICE_NAME)) != BLE_ERROR_NONE){
+    if (ble.gap().accumulateAdvertisingPayload(GapAdvertisingData::MANUFACTURER_SPECIFIC_DATA, (uint8_t *)mfgData, mfgDataLen ) != BLE_ERROR_NONE){
         led2.write(1);
     }
 
-    if (ble.gap().accumulateAdvertisingPayload(GapAdvertisingData::MANUFACTURER_SPECIFIC_DATA, (uint8_t *)mfgData, mfgDataLen ) != BLE_ERROR_NONE){
+    if (ble.gap().accumulateAdvertisingPayload(GapAdvertisingData::COMPLETE_LOCAL_NAME, (uint8_t *)DEVICE_NAME, sizeof(DEVICE_NAME)) != BLE_ERROR_NONE){
         led2.write(1);
     }
 
