@@ -19,6 +19,7 @@
 #include "ble/BLE.h"
 
 DigitalOut led1(P0_21, 1);
+DigitalOut led2(P0_20, 0);
 DigitalOut btn_pwr(P0_22, 1);
 InterruptIn pulse(P0_23);
 
@@ -27,7 +28,7 @@ InterruptIn pulse(P0_23);
 //#define COUNT_FALLS 1
 #define SEND_EACH_NTH 1
 
-const static char     DEVICE_NAME[]        = "SmartMeter";
+const static char     DEVICE_NAME[]        = "SM";
 long i = 0;
 char mfgData[30] = "{}";
 int mfgDataLen = sizeof(mfgData);
@@ -115,10 +116,15 @@ void pulseHandler(void)
 
     float batV = ((float)my_analogin_read_u16() * 3.6) / 1024.0;
 
-    mfgDataLen = sprintf(mfgData, "{ \"d\": %ld, \"v\": %d }", i, (int)(batV*1000));
+    mfgDataLen = sprintf(mfgData, "{\"d\":%ld,\"v\":%d}", i, (int)(batV*1000));
 
-    ble.gap().accumulateAdvertisingPayload(GapAdvertisingData::MANUFACTURER_SPECIFIC_DATA, (uint8_t *)mfgData, mfgDataLen );
-    ble.gap().accumulateAdvertisingPayload(GapAdvertisingData::COMPLETE_LOCAL_NAME, (uint8_t *)DEVICE_NAME, sizeof(DEVICE_NAME));
+    if (ble.gap().accumulateAdvertisingPayload(GapAdvertisingData::COMPLETE_LOCAL_NAME, (uint8_t *)DEVICE_NAME, sizeof(DEVICE_NAME)) != BLE_ERROR_NONE){
+        led2.write(1);
+    }
+
+    if (ble.gap().accumulateAdvertisingPayload(GapAdvertisingData::MANUFACTURER_SPECIFIC_DATA, (uint8_t *)mfgData, mfgDataLen ) != BLE_ERROR_NONE){
+        led2.write(1);
+    }
 
     ble.gap().startAdvertising();
     led1.write(1);
